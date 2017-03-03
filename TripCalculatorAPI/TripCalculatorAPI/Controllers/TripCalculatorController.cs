@@ -11,12 +11,12 @@ namespace TripCalculatorAPI.Controllers
     public class TripCalculatorController : ApiController
     {
 
-        public IHttpActionResult Get(IEnumerable<ExpenseLineItem> expenses)
+        public IHttpActionResult Get(IEnumerable<ExpenseLineItem> expenses, IEnumerable<string> names)
         {
             ExpenseRepaymentCollection result = new ExpenseRepaymentCollection();
 
 
-            return Json(result);
+            return Ok(result);
         }
 
     }
