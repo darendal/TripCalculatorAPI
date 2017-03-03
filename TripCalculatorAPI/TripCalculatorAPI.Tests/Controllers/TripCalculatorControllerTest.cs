@@ -21,9 +21,13 @@ namespace TripCalculatorAPI.Tests.Controllers
 
         private const string API_Address = "http://localhost/api/TripCalculator";
 
+        private HttpResponseMessage message;
+
         [TestInitialize]
         public void TestInitialize()
         {
+            message = null;
+
             tripController = new TripCalculatorController();
             tripController.Request = new System.Net.Http.HttpRequestMessage();
             tripController.Configuration = new HttpConfiguration();
@@ -37,8 +41,29 @@ namespace TripCalculatorAPI.Tests.Controllers
              );
 
             server = new HttpServer(config);
+        }
 
-            List<ExpenseLineItem> valid = new List<ExpenseLineItem>();
+        [TestCleanup]
+        public void TestCleanup()
+        {
+            if(message != null)
+            {
+                message.Dispose();
+            }
+        }
+
+        private HttpResponseMessage GetHttpResponse( string content, HttpMethod method)
+        {
+            using (HttpMessageInvoker client = new HttpMessageInvoker(server))
+            {
+                using (HttpRequestMessage request = new HttpRequestMessage(method, API_Address))
+                {
+                    request.Content = new StringContent(content);
+                    request.Content.Headers.Add("content", "application/json");
+                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                    return client.SendAsync(request, CancellationToken.None).Result;
+                }
+            }
         }
 
         /// <summary>
@@ -48,57 +73,34 @@ namespace TripCalculatorAPI.Tests.Controllers
         [TestMethod]
         public void TestNullValuesPassed()
         {
-            using (HttpMessageInvoker client = new HttpMessageInvoker(server))
-            {
-                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, API_Address))
-                {
-                    request.Content = new StringContent("");
-                    request.Content.Headers.Add("content", "application/json");
-                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                    using (HttpResponseMessage response = client.SendAsync(request, CancellationToken.None).Result)
-                    {
-                        Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+            message = GetHttpResponse(string.Empty, HttpMethod.Post);
+            Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, message.StatusCode);
 
-                        dynamic json = response.Content.ReadAsAsync<dynamic>().Result;
-                        string errorText = json["Message"];
+            dynamic json = message.Content.ReadAsAsync<dynamic>().Result;
+            string errorText = json["Message"];
 
-                        Assert.AreNotEqual(string.Empty, errorText);
-                    }
-                }
-            }
+            Assert.AreNotEqual(string.Empty, errorText);
+            
         }
 
         [TestMethod]
         public void TestInvalidExpenseValuesPassed()
         {
-            List<ExpenseLineItem> invalid = new List<ExpenseLineItem>()
+            List<User> invalid = new List<User>()
             {
-                new ExpenseLineItem() {Name = "A", ExpenseAmount = -2.00M },
-                new ExpenseLineItem() {Name = "B", ExpenseAmount = 10.00M },
-                new ExpenseLineItem() {Name = "C", ExpenseAmount = 10.00M },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = -10.00M },
-                new ExpenseLineItem() {Name = "E", ExpenseAmount = 10.00M },
-                new ExpenseLineItem() {Name = "F", ExpenseAmount = 10.00M },
+                new User() { Name = "L", Expenses = new decimal[]{ -5.75M, 35M, 12.79M} },
+                new User() { Name = "C", Expenses = new decimal[] { 12.00M, 15.00M, 23.23M } },
+                new User() { Name = "D", Expenses = new decimal[] { 10M, 20M, 38.41M, -45M } }
             };
 
-            using (HttpMessageInvoker client = new HttpMessageInvoker(server))
-            {
-                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, API_Address))
-                {
-                    request.Content = new StringContent(JsonConvert.SerializeObject(invalid));
-                    request.Content.Headers.Add("content", "application/json");
-                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                    using (HttpResponseMessage response = client.SendAsync(request, CancellationToken.None).Result)
-                    {
-                        Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+            message = GetHttpResponse(JsonConvert.SerializeObject(invalid), HttpMethod.Post);
 
-                        dynamic json = response.Content.ReadAsAsync<dynamic>().Result;
-                        string errorText = json["Message"];
+            Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, message.StatusCode);
 
-                        Assert.AreNotEqual(string.Empty, errorText);
-                    }
-                }
-            }
+            dynamic json = message.Content.ReadAsAsync<dynamic>().Result;
+            string errorText = json["Message"];
+
+            Assert.AreNotEqual(string.Empty, errorText);
 
         }
 
@@ -140,132 +142,92 @@ namespace TripCalculatorAPI.Tests.Controllers
         [TestMethod]
         public void TestAllExpensesZero()
         {
-            List<ExpenseLineItem> zero = new List<ExpenseLineItem>()
+            List<User> zero = new List<User>()
             {
-                new ExpenseLineItem() {Name = "L", ExpenseAmount = 0 },
-                new ExpenseLineItem() {Name = "C", ExpenseAmount = 0 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 0 },
+                new User() {Name = "L", Expenses = new decimal[] {0} },
+                new User() {Name = "C", Expenses = new decimal[] {0} },
+                new User() {Name = "D", Expenses = new decimal[] {0} }
             };
 
-            using (HttpMessageInvoker client = new HttpMessageInvoker(server))
-            {
-                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, API_Address))
-                {
-                    request.Content = new StringContent(JsonConvert.SerializeObject(zero));
-                    request.Content.Headers.Add("content", "application/json");
-                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                    using (HttpResponseMessage response = client.SendAsync(request, CancellationToken.None).Result)
-                    {
-                        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+            message = GetHttpResponse(JsonConvert.SerializeObject(zero), HttpMethod.Post);
 
-                        ExpenseRepaymentCollection repayment = response.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, message.StatusCode);
 
-                        Assert.AreEqual(0, repayment.Status);
-                    }
-                }
-            }
+            ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(0, repayment.Status);
         }
 
         [TestMethod]
         public void TestAllExpensesEqual()
         {
-            List<ExpenseLineItem> equal = new List<ExpenseLineItem>()
+            List<User> equal = new List<User>()
             {
-                new ExpenseLineItem() {Name = "L", ExpenseAmount = 10 },
-                new ExpenseLineItem() {Name = "C", ExpenseAmount = 5 },
-                new ExpenseLineItem() {Name = "C", ExpenseAmount = 5 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
+                new User() {Name="L", Expenses = new decimal[] { 10 } },
+                new User() {Name="C", Expenses = new decimal[] { 5, 5 } },
+                new User() {Name="D", Expenses = new decimal[] { 2, 2, 2, 2, 2 } },
             };
 
-            using (HttpMessageInvoker client = new HttpMessageInvoker(server))
-            {
-                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, API_Address))
-                {
-                    request.Content = new StringContent(JsonConvert.SerializeObject(equal));
-                    request.Content.Headers.Add("content", "application/json");
-                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                    using (HttpResponseMessage response = client.SendAsync(request, CancellationToken.None).Result)
-                    {
-                        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+            message = GetHttpResponse(JsonConvert.SerializeObject(equal), HttpMethod.Post);
 
-                        ExpenseRepaymentCollection repayment = response.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, message.StatusCode);
 
-                        Assert.AreEqual(0, repayment.Status);
-                    }
-                }
-            }
+            ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(0, repayment.Status);
+
         }
 
         [TestMethod]
         public void TestFloatingPointValues()
         {
-            List<ExpenseLineItem> floating = new List<ExpenseLineItem>()
+            List<User> floating = new List<User>()
             {
-                new ExpenseLineItem() {Name = "L", ExpenseAmount = 10.000000000001M },
-                new ExpenseLineItem() {Name = "C", ExpenseAmount = 5.0002000100999M },
-                new ExpenseLineItem() {Name = "C", ExpenseAmount = 5.0000000000009M },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2.0009999999999M },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 1.999M },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 1.9999999999999M },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2.00000000000001M },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
+                new User() {Name="L", Expenses = new decimal[] { 10.000000000001M } },
+                new User() {Name="C", Expenses = new decimal[] { 5.0002000100999M, 5.0000000000009M } },
+                new User() {Name="D", Expenses = new decimal[] { 2.0009999999999M, 1.999M, 1.9999999999999M, 2.00000000000001M, 2 } },
             };
 
-            using (HttpMessageInvoker client = new HttpMessageInvoker(server))
-            {
-                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, API_Address))
-                {
-                    request.Content = new StringContent(JsonConvert.SerializeObject(floating));
-                    request.Content.Headers.Add("content", "application/json");
-                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                    using (HttpResponseMessage response = client.SendAsync(request, CancellationToken.None).Result)
-                    {
-                        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+            message = GetHttpResponse(JsonConvert.SerializeObject(floating), HttpMethod.Post);
 
-                        ExpenseRepaymentCollection repayment = response.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, message.StatusCode);
 
-                        Assert.AreEqual(0, repayment.Status);
-                    }
-                }
-            }
+            ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(0, repayment.Status);
         }
 
         [TestMethod]
         public void TestOnePennyOff()
         {
-            List<ExpenseLineItem> onePennyOff = new List<ExpenseLineItem>()
+            List<User> onePennyOff = new List<User>()
             {
-                new ExpenseLineItem() {Name = "L", ExpenseAmount = 10 },
-                new ExpenseLineItem() {Name = "C", ExpenseAmount = 5 },
-                new ExpenseLineItem() {Name = "C", ExpenseAmount = 5 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2 },
-                new ExpenseLineItem() {Name = "D", ExpenseAmount = 2.01M },
+                new User() {Name="L", Expenses = new decimal[] { 10 } },
+                new User() {Name="C", Expenses = new decimal[] { 5, 5 } },
+                new User() {Name="D", Expenses = new decimal[] { 2, 2, 2, 2, 2.01M } },
             };
 
-            using (HttpMessageInvoker client = new HttpMessageInvoker(server))
+            message = GetHttpResponse(JsonConvert.SerializeObject(onePennyOff), HttpMethod.Post);
+
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, message.StatusCode);
+
+            ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(0, repayment.Status);
+        }
+
+        [TestMethod]
+        public void TestDuplicateUsers()
+        {
+            List<User> duplicateUser = new List<User>()
             {
-                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, API_Address))
-                {
-                    request.Content = new StringContent(JsonConvert.SerializeObject(onePennyOff));
-                    request.Content.Headers.Add("content", "application/json");
-                    request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                    using (HttpResponseMessage response = client.SendAsync(request, CancellationToken.None).Result)
-                    {
-                        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+                new User() {Name="L", Expenses = new decimal[] { 18 } },
+                new User() {Name="L", Expenses = new decimal[] { 3, 5 } },
+                new User() {Name="L", Expenses = new decimal[] { 2, 2 } },
+            };
 
-                        ExpenseRepaymentCollection repayment = response.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            message = GetHttpResponse(JsonConvert.SerializeObject(duplicateUser), HttpMethod.Post);
 
-                        Assert.AreEqual(0, repayment.Status);
-                    }
-                }
-            }
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, message.StatusCode);
+
+            ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(0, repayment.Status);
         }
     }
 }
