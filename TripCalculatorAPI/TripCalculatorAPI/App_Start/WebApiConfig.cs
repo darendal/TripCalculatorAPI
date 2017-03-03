@@ -13,6 +13,7 @@ namespace TripCalculatorAPI
             // Web API configuration and services
             // Return JSON by default when passed a text/html request
             config.Formatters.JsonFormatter.SupportedMediaTypes.Add(new MediaTypeHeaderValue("text/html"));
+
             // Web API routes
             config.MapHttpAttributeRoutes();
 

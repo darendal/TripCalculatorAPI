@@ -12,27 +12,27 @@ namespace TripCalculatorAPI.Controllers
     {
         public ExpenseRepaymentCollection Post(IEnumerable<User> users)
         {
-            if (users == null || !users.Any() || users.All(u=>!u.Expenses.Any()))
+            if (users == null || !users.Any() || users.All(u => !u.Expenses.Any()))
             {
-                //empty result passed
+                // empty result passed
                 ThrowResponseException(HttpStatusCode.BadRequest, "Empty list of users entered");
             }
 
-            if (users.SelectMany(u=>u.Expenses).Any(exp => exp < 0))
+            if (users.SelectMany(u => u.Expenses).Any(exp => exp < 0))
             {
-                //one or more expenses has a negative amount
+                // one or more expenses has a negative amount
                 ThrowResponseException(HttpStatusCode.BadRequest, "One or more Expense line items have a negative expense amount");
             }
 
             ExpenseRepaymentCollection result = new ExpenseRepaymentCollection();
 
-            //Flatten list into 1 expense line item per name, with their total expenditure
-            var totalExpenses = users.GroupBy(u=>u.Name)
+            // Flatten list into 1 expense line item per name, with their total expenditure
+            var totalExpenses = users.GroupBy(u => u.Name)
                 .Select(x => 
                     new ExpenseLineItem()
                     {
                         Name = x.Key,
-                        ExpenseAmount = x.SelectMany(y=>y.Expenses).Sum()
+                        ExpenseAmount = x.SelectMany(y => y.Expenses).Sum()
                     }
                  ).ToList();
 
@@ -45,10 +45,9 @@ namespace TripCalculatorAPI.Controllers
 
             decimal equalShares = Math.Round(totalExpenditure / totalExpenses.Count, 2);
 
-
             if (totalExpenses.All(e => e.EqualWithinOneCent(equalShares)))
             {
-                //All users have already paid equally, no repayments need to be done
+                // All users have already paid equally, no repayments need to be done
                 return result;
             }
 
