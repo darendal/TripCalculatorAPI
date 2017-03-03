@@ -23,6 +23,7 @@ namespace TripCalculatorAPI.Controllers
                 //one or more expenses has a negative amount
                 ThrowResponseException(HttpStatusCode.BadRequest, "One or more Expense line items have a negative expense amount");
             }
+
             ExpenseRepaymentCollection result = new ExpenseRepaymentCollection();
 
             //Flatten list into 1 expense line item per name, with their total expenditure

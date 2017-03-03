@@ -67,6 +67,29 @@ namespace TripCalculatorAPI.Tests.Controllers
         }
 
         /// <summary>
+        /// Helper method used to verify if a given Expense Repayment Collection
+        /// can reasonably be used to satisfy the given user set
+        /// </summary>
+        /// <param name="repayment"></param>
+        /// <param name="originalData"></param>
+        /// <returns></returns>
+        private bool VerifyRepaymentCollection(ExpenseRepaymentCollection repayment, List<User> originalData)
+        {
+            var d = originalData.ToDictionary(x => x.Name, y => y.Expenses.Sum());
+
+            foreach (var e in repayment.Repayments)
+            {
+                d[e.PayTo] -= e.Amout;
+                d[e.PayFrom] += e.Amout;
+            }
+
+            var l = d.Select(x => new ExpenseLineItem() { Name = x.Key, ExpenseAmount = x.Value });
+            decimal average = l.Average(y => y.ExpenseAmount);
+
+            return l.All(x => x.EqualWithinOneCent(average));
+        }
+
+        /// <summary>
         /// Test that passing a null list returns a 400 bad request error.
         /// Checks that the error returned also includes a detailed message
         /// </summary>
@@ -228,6 +251,43 @@ namespace TripCalculatorAPI.Tests.Controllers
 
             ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
             Assert.AreEqual(0, repayment.Status);
+        }
+
+        [TestMethod]
+        public void TestLargeDataSet()
+        {
+            List<User> data = new List<User>()
+            {
+                new User() {Name = "A", Expenses = new decimal[] {1,2,3,4,5,6,7,8,9,10} },
+                new User() {Name = "B", Expenses = new decimal[] {11,6,7,8,9,10} },
+                new User() {Name = "C", Expenses = new decimal[] {1,8,9,10} },
+                new User() {Name = "D", Expenses = new decimal[] {1,2,12.55m} },
+                new User() {Name = "E", Expenses = new decimal[] {3,4,5,6,7,8,9.8M,10} },
+                new User() {Name = "F", Expenses = new decimal[] {1,20} },
+                new User() {Name = "G", Expenses = new decimal[] {} },
+                new User() {Name = "H", Expenses = new decimal[] {7,8,9,10} },
+                new User() {Name = "I", Expenses = new decimal[] {1,2,3,4,5,6,7,8,9,10} },
+                new User() {Name = "J", Expenses = new decimal[] {1,2,3,4,5,8,9,10} },
+                new User() {Name = "K", Expenses = new decimal[] {1,2,3,4,5,6,7,8,9,10} },
+                new User() {Name = "L", Expenses = new decimal[] {1,2,3.14M,6,7,8,9,10} },
+                new User() {Name = "M", Expenses = new decimal[] {0.01M,1,2,3,4,5,6,7,8,9,10} },
+                new User() {Name = "N", Expenses = new decimal[] {1,2,3,10} },
+                new User() {Name = "O", Expenses = new decimal[] {1,22,3,4,5,6,7,8,9,10} },
+                new User() {Name = "P", Expenses = new decimal[] {1,10} },
+                new User() {Name = "Q", Expenses = new decimal[] {1,24} }
+            };
+
+            message = GetHttpResponse(JsonConvert.SerializeObject(data), HttpMethod.Post);
+
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, message.StatusCode);
+
+            ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(1, repayment.Status);
+
+            //Check that nobody is paying themselves
+            Assert.IsTrue(repayment.Repayments.Any(e => e.PayFrom.Equals(e.PayFrom, StringComparison.CurrentCultureIgnoreCase)));
+
+            Assert.IsTrue(VerifyRepaymentCollection(repayment, data));
         }
     }
 }
