@@ -23,6 +23,6 @@ namespace TripCalculatorAPI.Models
         /// <summary>
         /// Money being paid, rounded to nearest cent
         /// </summary>
-        public double Amout { get; set; }
+        public decimal Amout { get; set; }
     }
 }

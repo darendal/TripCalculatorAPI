@@ -9,6 +9,23 @@ namespace TripCalculatorAPI.Models
     {
         public string Name { get; set; }
 
-        public double ExpenseAmount { get; set; }
+        private decimal _expenseAmount = 0;
+        public decimal ExpenseAmount
+        {
+            get
+            {
+                return Math.Round(_expenseAmount, 2);
+            }
+            set
+            {
+                _expenseAmount = value;
+            }
+        }
+
+        public bool EqualWithinOneCent(decimal amount)
+        {
+            return (ExpenseAmount >= amount - 0.01M) && (ExpenseAmount <= amount + 0.01M);
+        }
+        
     }
 }

@@ -9,6 +9,10 @@ namespace TripCalculatorAPI.Models
     {
         public ExpenseRepayment[] Repayments { get; set; }
 
-        public byte status { get; set; }
+        /// <summary>
+        /// 1: Valid data, Repayments > 0 
+        /// 0: Valid data, no repayments present
+        /// </summary>
+        public byte Status { get; set; }
     }
 }
