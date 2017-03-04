@@ -13,11 +13,12 @@ namespace TripCalculatorAPI
         {
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
 
+            // By default route the user to the Help area if accessing the base URI.
             routes.MapRoute(
-                name: "Default",
-                url: "{controller}/{action}/{id}",
-                defaults: new { controller = "Home", action = "Index", id = UrlParameter.Optional }
-            );
+                "Help Area",
+                "",
+                new { controller = "Help", action = "Index" }
+            ).DataTokens = new RouteValueDictionary(new { area = "HelpPage" });
         }
     }
 }

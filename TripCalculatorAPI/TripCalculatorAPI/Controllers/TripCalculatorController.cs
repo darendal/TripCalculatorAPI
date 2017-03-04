@@ -8,8 +8,17 @@ using TripCalculatorAPI.Models;
 
 namespace TripCalculatorAPI.Controllers
 {
+    /// <summary>
+    /// API for calculating expenses for a group of users
+    /// </summary>
     public class TripCalculatorController : ApiController
     {
+        /// <summary>
+        /// Given a list of users, calculate the minimum number of payments to equalize expenses
+        /// to the nearest cent
+        /// </summary>
+        /// <param name="users">List of users</param>
+        /// <returns>Expense report collection, containing Expense Repayments</returns>
         public ExpenseRepaymentCollection Post(IEnumerable<User> users)
         {
             if (users == null || !users.Any() || users.All(u => !u.Expenses.Any()))
