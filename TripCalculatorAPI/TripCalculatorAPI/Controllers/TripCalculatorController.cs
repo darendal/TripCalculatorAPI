@@ -52,7 +52,7 @@ namespace TripCalculatorAPI.Controllers
                 return result;
             }
 
-            decimal equalShares = Math.Round(totalExpenditure / totalExpenses.Count, 2);
+            decimal equalShares = totalExpenditure / totalExpenses.Count;
 
             if (totalExpenses.All(e => e.EqualWithinOneCent(equalShares)))
             {
@@ -60,15 +60,16 @@ namespace TripCalculatorAPI.Controllers
                 return result;
             }
 
-            List<ExpenseLineItem> paidMoreThanEqual = totalExpenses.Where(e => e.ExpenseAmount > equalShares).ToList();
-            List<ExpenseLineItem> paidLessThanEqual = totalExpenses.Where(e => e.ExpenseAmount < equalShares).ToList();
+            //Because we only ever need to look at the front of the line, a stack is more efficient
+            Stack<ExpenseLineItem> paidMoreThanEqual = new Stack<ExpenseLineItem>(totalExpenses.Where(e => e.ExpenseAmount > equalShares));
+            Stack<ExpenseLineItem> paidLessThanEqual = new Stack<ExpenseLineItem>(totalExpenses.Where(e => e.ExpenseAmount < equalShares));
 
             List<ExpenseRepayment> repayments = new List<ExpenseRepayment>();
 
-            while (paidMoreThanEqual.Any())
+            while (paidMoreThanEqual.Any() && paidLessThanEqual.Any())
             {
-                ExpenseLineItem currentUnderpayer = paidLessThanEqual.First();
-                ExpenseLineItem currentOverpayer = paidMoreThanEqual.First();
+                ExpenseLineItem currentUnderpayer = paidLessThanEqual.Peek();
+                ExpenseLineItem currentOverpayer = paidMoreThanEqual.Peek();
 
                 decimal amountToPay = Math.Min(currentOverpayer.ExpenseAmount - equalShares, equalShares - currentUnderpayer.ExpenseAmount);
 
@@ -79,12 +80,12 @@ namespace TripCalculatorAPI.Controllers
 
                 if (currentUnderpayer.EqualWithinOneCent(equalShares))
                 {
-                    paidLessThanEqual.Remove(currentUnderpayer);
+                    paidLessThanEqual.Pop();
                 }
 
                 if (currentOverpayer.EqualWithinOneCent(equalShares))
                 {
-                    paidMoreThanEqual.Remove(currentOverpayer);
+                    paidMoreThanEqual.Pop();
                 }
             }
 

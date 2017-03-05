@@ -9,19 +9,13 @@ namespace TripCalculatorAPI.Models
     {
         public string Name { get; set; }
 
-        private decimal _expenseAmount = 0;
-        public decimal ExpenseAmount
-        {
-            get
-            {
-                return Math.Round(_expenseAmount, 2);
-            }
-            set
-            {
-                _expenseAmount = value;
-            }
-        }
+        public decimal ExpenseAmount { get; set; }
 
+        /// <summary>
+        /// Check if this line items expense amount is within a cent of the given value
+        /// </summary>
+        /// <param name="amount"></param>
+        /// <returns></returns>
         public bool EqualWithinOneCent(decimal amount)
         {
             return (ExpenseAmount >= amount - 0.01M) && (ExpenseAmount <= amount + 0.01M);

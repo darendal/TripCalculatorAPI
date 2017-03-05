@@ -20,9 +20,20 @@ namespace TripCalculatorAPI.Models
         /// </summary>
         public string PayFrom { get; set; }
 
+        private decimal _amount = 0M;
         /// <summary>
         /// Money being paid, rounded to nearest cent
         /// </summary>
-        public decimal Amout { get; set; }
+        public decimal Amout
+        {
+            get
+            {
+                return Math.Round(_amount, 2);
+            }
+            set
+            {
+                _amount = value;
+            }
+        }
     }
 }

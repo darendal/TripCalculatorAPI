@@ -60,8 +60,7 @@ namespace TripCalculatorAPI.Tests.Controllers
             message = GetHttpResponse(string.Empty, HttpMethod.Post);
             Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, message.StatusCode);
 
-            dynamic json = message.Content.ReadAsAsync<dynamic>().Result;
-            string errorText = json["Message"];
+            string errorText = GetErrorMessage(message);
 
             Assert.AreNotEqual(string.Empty, errorText);
         }
@@ -80,8 +79,7 @@ namespace TripCalculatorAPI.Tests.Controllers
 
             Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, message.StatusCode);
 
-            dynamic json = message.Content.ReadAsAsync<dynamic>().Result;
-            string errorText = json["Message"];
+            string errorText = GetErrorMessage(message);
 
             Assert.AreNotEqual(string.Empty, errorText);
         }
@@ -221,7 +219,7 @@ namespace TripCalculatorAPI.Tests.Controllers
                 new User() {Name = "D", Expenses = new decimal[] {1,2,12.55m } },
                 new User() {Name = "E", Expenses = new decimal[] {3,4,5,6,7,8,9.8M,10 } },
                 new User() {Name = "F", Expenses = new decimal[] {1,20 } },
-                new User() {Name = "G", Expenses = new decimal[] { } },
+                new User() {Name = "G", Expenses = new decimal[] {15, 1.23M} },
                 new User() {Name = "H", Expenses = new decimal[] {7,8,9,10 } },
                 new User() {Name = "I", Expenses = new decimal[] {1,2,3,4,5,6,7,8,9,10 } },
                 new User() {Name = "J", Expenses = new decimal[] {1,2,3,4,5,8,9,10 } },
@@ -231,7 +229,7 @@ namespace TripCalculatorAPI.Tests.Controllers
                 new User() {Name = "N", Expenses = new decimal[] {1,2,3,10 } },
                 new User() {Name = "O", Expenses = new decimal[] {1,22,3,4,5,6,7,8,9,10 } },
                 new User() {Name = "P", Expenses = new decimal[] {1,10 } },
-                new User() {Name = "Q", Expenses = new decimal[] {1,24 } }
+                new User() {Name = "Q", Expenses = new decimal[] {1,24 } },
             };
 
             message = GetHttpResponse(JsonConvert.SerializeObject(data), HttpMethod.Post);
@@ -245,6 +243,68 @@ namespace TripCalculatorAPI.Tests.Controllers
             Assert.IsTrue(repayment.Repayments.Any(e => e.PayFrom.Equals(e.PayFrom, StringComparison.CurrentCultureIgnoreCase)));
 
             Assert.IsTrue(VerifyRepaymentCollection(repayment, data));
+        }
+
+        [TestMethod]
+        public void TestOnlyOneUserPays()
+        {
+            List<User> data = new List<User>()
+            {
+                new User() {Name = "A", Expenses = new decimal[] {1,2,3,4,5.24M,6,7,8,9,10 } },
+                new User() {Name = "B", },
+                new User() {Name = "C", },
+                new User() {Name = "D",  },
+                new User() {Name = "E",  },
+                new User() {Name = "F",  },
+                new User() {Name = "G",  },
+                new User() {Name = "H",  },
+                new User() {Name = "I",  },
+                new User() {Name = "J",  },
+                new User() {Name = "K",  },
+                new User() {Name = "L",  },
+                new User() {Name = "M",  },
+                new User() {Name = "N",  },
+                new User() {Name = "O",  },
+                new User() {Name = "P",  },
+                new User() {Name = "Q",  }
+            };
+
+            message = GetHttpResponse(JsonConvert.SerializeObject(data), HttpMethod.Post);
+
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, message.StatusCode);
+
+            ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(1, repayment.Status);
+
+            // Check that nobody is paying themselves
+            Assert.IsTrue(repayment.Repayments.Any(e => e.PayFrom.Equals(e.PayFrom, StringComparison.CurrentCultureIgnoreCase)));
+
+            Assert.IsTrue(VerifyRepaymentCollection(repayment, data));
+        }
+
+        [TestMethod]
+        public void TestOneUserDoesntPay()
+        {
+            List<User> data = new List<User>()
+            {
+                new User() {Name = "A", Expenses = new decimal[] {1,2,3,4,5,6,7,8,9,10 } },
+                new User() {Name = "B", Expenses = new decimal[] {11,6,7,8,9,10 } },
+                new User() {Name = "C", Expenses = new decimal[] {1,8,9,10 } },
+                new User() {Name = "D", Expenses = new decimal[] {1,2,12.55m } },
+                new User() {Name = "E", Expenses = new decimal[] {3,4,5,6,7,8,9.8M,10 } },
+                new User() {Name = "F", Expenses = new decimal[] {1,20 } },
+                new User() {Name = "G" },
+                new User() {Name = "H", Expenses = new decimal[] {7,8,9,10 } },
+                new User() {Name = "I", Expenses = new decimal[] {1,2,3,4,5,6,7,8,9,10 } },
+                new User() {Name = "J", Expenses = new decimal[] {1,2,3,4,5,8,9,10 } },
+                new User() {Name = "K", Expenses = new decimal[] {1,2,3,4,5,6,7,8,9,10 } },
+                new User() {Name = "L", Expenses = new decimal[] {1,2,3.14M,6,7,8,9,10 } },
+                new User() {Name = "M", Expenses = new decimal[] {0.01M,1,2,3,4,5,6,7,8,9,10 } },
+                new User() {Name = "N", Expenses = new decimal[] {1,2,3,10 } },
+                new User() {Name = "O", Expenses = new decimal[] {1,22,3,4,5,6,7,8,9,10 } },
+                new User() {Name = "P", Expenses = new decimal[] {1,10 } },
+                new User() {Name = "Q", Expenses = new decimal[] {1,24 } }
+            };
         }
 
         private HttpResponseMessage GetHttpResponse(string content, HttpMethod method)
@@ -282,6 +342,16 @@ namespace TripCalculatorAPI.Tests.Controllers
             decimal average = l.Average(y => y.ExpenseAmount);
 
             return l.All(x => x.EqualWithinOneCent(average));
+        }
+
+        /// <summary>
+        /// Parse the error message out of the API's default error message JSON string
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        private string GetErrorMessage(HttpResponseMessage message)
+        {
+            return message.Content.ReadAsAsync<dynamic>().Result["Message"];
         }
     }
 }
