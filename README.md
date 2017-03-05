@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/k48sa21dt15jl2f2/branch/master?svg=true)](https://ci.appveyor.com/project/darendal/tripcalculatorapi/branch/master)
+
 # TripCalculatorAPI
 
 C# Web API for calculating expenses for a group of users. API accepts a JSON string containing a list of Users, with each user containing a name and a list of decimal expenses. Returns a JSON string containing which user needs to pay another user, and how much, to make all expenses equal to within one cent.
