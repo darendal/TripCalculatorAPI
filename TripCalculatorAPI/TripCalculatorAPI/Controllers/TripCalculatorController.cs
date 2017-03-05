@@ -19,7 +19,8 @@ namespace TripCalculatorAPI.Controllers
         /// </summary>
         /// <param name="users">List of users</param>
         /// <returns>Expense report collection, containing Expense Repayments</returns>
-        public ExpenseRepaymentCollection Post(IEnumerable<User> users)
+        [HttpPost]
+        public ExpenseRepaymentCollection Post([FromBody] IEnumerable<User> users)
         {
             if (users == null || !users.Any() || users.All(u => !u.Expenses.Any()))
             {
