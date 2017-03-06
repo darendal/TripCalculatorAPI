@@ -46,7 +46,17 @@ namespace TripCalculatorAPI.Controllers
                     }
                  ).ToList();
 
-            decimal totalExpenditure = totalExpenses.Sum(e => e.ExpenseAmount);
+            decimal totalExpenditure = 0;
+
+            try
+            {
+                totalExpenditure = totalExpenses.Sum(e => e.ExpenseAmount);
+            }
+            catch(OverflowException)
+            {
+                ThrowResponseException(HttpStatusCode.BadRequest, "Expenses entered are total greater than maximum precision");
+            }
+
 
             if (totalExpenditure == 0)
             {

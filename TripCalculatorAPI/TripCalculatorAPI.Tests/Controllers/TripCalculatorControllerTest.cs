@@ -305,6 +305,42 @@ namespace TripCalculatorAPI.Tests.Controllers
                 new User() {Name = "P", Expenses = new decimal[] {1,10 } },
                 new User() {Name = "Q", Expenses = new decimal[] {1,24 } }
             };
+
+            message = GetHttpResponse(JsonConvert.SerializeObject(data), HttpMethod.Post);
+
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, message.StatusCode);
+
+            ExpenseRepaymentCollection repayment = message.Content.ReadAsAsync<ExpenseRepaymentCollection>().Result;
+            Assert.AreEqual(1, repayment.Status);
+
+            // Check that nobody is paying themselves
+            Assert.IsTrue(repayment.Repayments.Any(e => e.PayFrom.Equals(e.PayFrom, StringComparison.CurrentCultureIgnoreCase)));
+
+            Assert.IsTrue(VerifyRepaymentCollection(repayment, data));
+        }
+
+        /// <summary>
+        /// Verify that an appropriate error is thrown if values exceed the max value for a decimal
+        /// Since the max decimal value is ~79 octillion, probably not going to happen, 
+        /// but cheap to check and return an appropriate error message if it does
+        /// </summary>
+        [TestMethod]
+        public void TestVeryLargeExpenses()
+        {
+            List<User> data = new List<User>()
+            {
+                new User() {Name = "A", Expenses = new decimal[] {decimal.MaxValue} },
+                new User() {Name = "B", Expenses = new decimal[] {1 } },
+                new User() {Name = "C", Expenses = new decimal[] {2 } }
+            };
+
+            message = GetHttpResponse(JsonConvert.SerializeObject(data), HttpMethod.Post);
+
+            Assert.AreEqual(System.Net.HttpStatusCode.BadRequest, message.StatusCode);
+
+            string errorText = GetErrorMessage(message);
+
+            Assert.AreNotEqual(string.Empty, errorText);
         }
 
         private HttpResponseMessage GetHttpResponse(string content, HttpMethod method)
